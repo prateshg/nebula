@@ -1,4 +1,7 @@
 from scapy.all import *
+import numpy
+import datetime
+import struct
 
 class RateLimitingNCP:
     def __init__(self, pkt_per_sec):
@@ -12,7 +15,8 @@ class RateLimitingNCP:
         Only allow self.pkt_per_sec packets to be sent each second,
         start dropping once this limit has been reached
         """
-        t_now = time.time()
+        t_now = time.clock()
+        print t_now
         t_delta = t_now - self.t_old
         self.t_old = t_now
         self.allowance += t_delta * self.pkt_per_sec
@@ -27,7 +31,11 @@ class RateLimitingNCP:
 
                 # MODIFY
                 t1,t3 = payload[IP][payload.getlayer(1).name].options[2][1]
-                payload[IP][payload.getlayer(1).name].options[2] = ('Timestamp', (t1+1,t3))
+                
+                delta = datetime.datetime.now() - datetime.datetime(1970, 1, 1)
+                t1 = struct.unpack('!I',struct.pack('!f',delta.total_seconds()%10000))[0]
+
+                payload[IP][payload.getlayer(1).name].options[2] = ('Timestamp', (t1,t3))
 
                 str1 = payload[IP].src + " " + payload[IP].dst+" "
                 str1 += payload.getlayer(1).name + " "
@@ -62,6 +70,7 @@ class RateLimitingNCP:
         t_now = time.time()
         payload = IP(pkt.get_payload())
         if payload.getlayer(1).name=="TCP":
+            t1,t3 = payload[IP][payload.getlayer(1).name].options[2][1]
             print "[{t}] Incoming: {src}:{sport}->{dst}:{dport}, ack={ack}, len={pay_len}, tsv={tsv}".format(
                 t=t_now,
                 src=payload[IP].src,
@@ -72,4 +81,6 @@ class RateLimitingNCP:
                 pay_len=len(payload[IP][payload.getlayer(1).name].payload),
                 tsv=payload[IP][payload.getlayer(1).name].options[2][1]
             )
+            delta = datetime.datetime.now() - datetime.datetime(1970, 1, 1)
+            print "RTT", (delta.total_seconds()%10000) - struct.unpack('!f',struct.pack('!I',t1)[0]
         pkt.accept()

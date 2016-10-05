@@ -13,11 +13,11 @@ fi
 
 if [[ $NCPMODE -eq 0 ]]
 then # NEBULA1 = 172.18.0.5
-    iptables -t mangle -A OUTPUT -p udp --dst $NEBULA2 -j NFQUEUE --queue-num 1
-    iptables -t mangle -A PREROUTING -p udp --src $NEBULA2 -j NFQUEUE --queue-num 2
+    iptables -t mangle -A OUTPUT -p tcp --dst $NEBULA2 -j NFQUEUE --queue-num 1
+    iptables -t mangle -A PREROUTING -p tcp --src $NEBULA2 -j NFQUEUE --queue-num 2
 else # NEBULA2 = 172.18.0.6
-    iptables -t mangle -A OUTPUT -p udp --dst $NEBULA1 -j NFQUEUE --queue-num 1
-    iptables -t mangle -A PREROUTING -p udp --src $NEBULA1 -j NFQUEUE --queue-num 2
+    iptables -t mangle -A OUTPUT -p tcp --dst $NEBULA1 -j NFQUEUE --queue-num 1
+    iptables -t mangle -A PREROUTING -p tcp --src $NEBULA1 -j NFQUEUE --queue-num 2
 fi
 
 python /local-ncp.py

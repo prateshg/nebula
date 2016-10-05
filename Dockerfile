@@ -4,7 +4,7 @@ MAINTAINER Akshay Narayan
 RUN apt-get update
 RUN apt-get install -y build-essential iptables nftables net-tools iperf python-dev python-pip libnetfilter-queue-dev iputils-ping netcat tcpdump
 RUN pip install --upgrade pip
-RUN pip install scapy NetfilterQueue multiprocessing
+RUN pip install scapy NetfilterQueue multiprocessing numpy
 
 ENV NEBULA1 172.18.0.5
 ENV NEBULA2 172.18.0.6

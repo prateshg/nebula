@@ -60,16 +60,119 @@ Frank Cangialosi <frankc@csail.mit.edu>, ...
 import time
 from netfilterqueue import NetfilterQueue, COPY_PACKET
 from multiprocessing import Process
-from ncp.NaiveNCP import NaiveNCP
-from ncp.RateLimitingNCP import RateLimitingNCP
+from scapy.all import *
+import numpy
+import datetime
+import struct
+#from NaiveNCP import NaiveNCP
+#from RateLimitingNCP import RateLimitingNCP
 ###############################################################################
 
 OUT_QUEUE_ID = 1
 IN_QUEUE_ID = 2
-MAXQ = 100 # Arbitrarily chosen for now
+MAXQ = 10000 # Arbitrarily chosen for now
 MODE = COPY_PACKET # change to COPY_META to only get meta data
 PACKETS_PER_SECOND = 3
 ###############################################################################
+
+class NaiveNCP:
+    def __init__(self):
+        pass
+
+    def print_packet(self, pkt):
+        payload = IP(pkt.get_payload())
+        payload.show()
+
+    def handle_outgoing_packet(self, pkt):
+        #print "Outgoing packet..."
+        #self.print_packet(pkt)
+        pkt.accept()
+
+    def handle_incoming_packet(self, pkt):
+        #print "Incoming packet..."
+        #self.print_packet(pkt)
+        pkt.accept()
+
+class RateLimitingNCP:
+    def __init__(self, pkt_per_sec):
+        self.pkt_per_sec = pkt_per_sec
+        self.allowance = pkt_per_sec
+        self.t_old = time.time()
+        #self.RTT = {}
+
+    def handle_outgoing_packet(self, pkt):
+        """
+        Only allow self.pkt_per_sec packets to be sent each second,
+        start dropping once this limit has been reached
+        """
+        t_now = time.time()
+        '''t_delta = t_now - self.t_old
+        self.t_old = t_now
+        self.allowance += t_delta * self.pkt_per_sec
+        self.allowance = min(self.allowance, self.pkt_per_sec)'''
+        if False:#self.allowance < 1.0:
+            #print "Dropping packet, allowance={}".format(self.allowance)
+            pkt.drop()
+        else:
+            #pkt.accept()
+            #print "Accepting packet, allowance={}".format(self.allowance)
+            payload = IP(pkt.get_payload())
+            if payload.getlayer(1).name=="TCP":
+                #print "Outgoing"
+                # MODIFY
+                #print payload[IP][payload.getlayer(1).name].options
+                t1,t3 = payload[IP][payload.getlayer(1).name].options[2][1]
+                
+                #print type(t1)
+                #delta = datetime.datetime.now() - datetime.datetime(1970, 1, 1)
+                #t1 = int((delta.total_seconds()%1000)*10000)
+                #payload[IP][payload.getlayer(1).name].options[2] = ('Timestamp', (t1+1,t3))
+
+            '''str1 = payload[IP].src + " " + payload[IP].dst+" "
+                str1 += payload.getlayer(1).name + " "
+                str1 += str(payload[IP][payload.getlayer(1).name].sport)
+                str1 += str(payload[IP][payload.getlayer(1).name].dport)
+                seq_n = str(payload[IP][payload.getlayer(1).name].seq + len(payload[IP][payload.getlayer(1).name].payload))
+                print "[{t}] Outgoing: {src}:{sport}->{dst}:{dport}, seq={seq}, len={pay_len}, tsv={tsv}, t1={t1}".format(
+                    t=t_now,
+                    src=payload[IP].src,
+                    sport=payload[IP][payload.getlayer(1).name].sport,
+                    dst=payload[IP].dst,
+                    dport=payload[IP][payload.getlayer(1).name].dport,
+                    seq=payload[IP][payload.getlayer(1).name].seq,
+                    pay_len=len(payload[IP][payload.getlayer(1).name].payload),
+                    tsv=payload[IP][payload.getlayer(1).name].options[2][1],
+                    t1=t1
+                )'''
+            #del payload[IP][payload.getlayer(1).name].chksum
+            #pkt.set_payload(str(payload))
+            pkt.accept()
+            self.allowance -= 1.0
+
+    def handle_incoming_packet(self, pkt):
+        """
+        Allow all incoming packets
+        """
+        t_now = time.time()#datetime.datetime.now()
+        payload = IP(pkt.get_payload())
+        if payload.getlayer(1).name=="TCP":
+            t1,t3 = payload[IP][payload.getlayer(1).name].options[2][1]
+        '''print "[{t}] Incoming: {src}:{sport}->{dst}:{dport}, ack={ack}, len={pay_len}, tsv={tsv}".format(
+                t=t_now,
+                src=payload[IP].src,
+                sport=payload[IP][payload.getlayer(1).name].sport,
+                dst=payload[IP].dst,
+                dport=payload[IP][payload.getlayer(1).name].dport,
+                ack=payload[IP][payload.getlayer(1).name].ack,
+                pay_len=len(payload[IP][payload.getlayer(1).name].payload),
+                tsv=payload[IP][payload.getlayer(1).name].options[2][1]
+            )'''
+        '''delta = datetime.datetime.now() - datetime.datetime(1970, 1, 1)
+            a = (delta.total_seconds()%1000) - t3/10000.0
+            print a'''
+        pkt.accept()
+
+
 
 if __name__ == "__main__":
     # Setup NCP
